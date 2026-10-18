@@ -1,0 +1,13 @@
+import {writeFile,readFile,mkdir} from 'node:fs/promises';
+const paths=['/','/services','/services/brickwork-masonry','/services/extensions-building','/services/property-renovations','/services/garden-construction','/services/driveways-exterior','/our-work','/about','/our-approach','/areas','/faqs','/contact','/privacy','/cookies','/terms'];
+const origin=process.env.VITE_SITE_URL?.replace(/\/$/,'');
+if(origin){new URL(origin);await writeFile('dist/sitemap.xml','<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+paths.map(p=>'<url><loc>'+origin+p+'</loc></url>').join('')+'</urlset>');}
+else await writeFile('dist/sitemap.xml','<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+const html=await readFile('dist/index.html','utf8');
+if(origin)await writeFile('dist/index.html',html.replace('</head>','<link rel="canonical" href="'+origin+'/"/></head>'));
+// Per-route HTML gives direct requests distinct metadata before JavaScript executes.
+const titles=['Building services in Redditch','Services','Brickwork & Masonry','Extensions & Building Work','Property Renovations','Landscaping & Garden Construction','Driveways & Exterior Improvements','Construction Inspiration','About Woodhall','Our Approach','Areas & Locations','FAQs','Request a Quote','Privacy Information','Cookie Information','Demonstration Terms'];
+for(let i=0;i<paths.length;i++){const path=paths[i];if(path==='/')continue;await mkdir('dist'+path,{recursive:true});let page=html.replace(/<title>.*?<\/title>/,'<title>'+titles[i]+' | Woodhall Building Services · Demo</title>').replace(/<meta name="description" content="[^"]*"\s*\/>/,'<meta name="description" content="'+titles[i]+'. Explore this Nimora Digital prospect concept for Woodhall Building Services, Redditch. Not the official business website."/>');if(origin)page=page.replace('</head>','<link rel="canonical" href="'+origin+path+'"/></head>');await writeFile('dist'+path+'/index.html',page);}
+await writeFile('dist/404.html',html.replace(/<title>.*?<\/title>/,'<title>Page not found | Woodhall Building Services · Demo</title>'));
+// A CreativeWork describes the concept, avoiding an unapproved LocalBusiness endorsement.
+await writeFile('dist/concept.jsonld',JSON.stringify({'@context':'https://schema.org','@type':'CreativeWork',name:'Woodhall Building Services website concept',creator:{'@type':'Organization',name:'Nimora Digital'},about:{'@type':'Thing',name:'Woodhall Building Services Ltd'},description:'Unauthorised prospect demonstration. Images are illustrative. No ratings or credentials claimed.'}));

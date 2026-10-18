@@ -1,0 +1,9 @@
+import test from 'node:test';import assert from 'node:assert/strict';import handler,{validate} from '../netlify/functions/enquiry.mjs';
+const valid={name:'Test Person',email:'test@example.invalid',phone:'07535523743',postcode:'B97 4AA',type:'Brickwork & Masonry',description:'A test enquiry about a garden boundary wall.',privacy:true,requestId:'8ed409c9-9602-42aa-b4d8-74312ab45255'};
+test('valid building enquiry passes server validation',()=>assert.deepEqual(validate(valid),[]));
+test('rejects missing, malformed and oversized details',()=>{assert.ok(validate({...valid,email:'bad',postcode:'invalid',privacy:false,description:'x'.repeat(5001),requestId:'bad'}).length>=5)});
+test('rejects forged work types',()=>assert.ok(validate({...valid,type:'Made-up specialist service'}).includes('type')));
+test('default demo blocks POST and confirms no storage',async()=>{delete process.env.ENQUIRIES_ENABLED;const r=await handler(new Request('https://demo.invalid/api/enquiry',{method:'POST',body:JSON.stringify(valid)}));assert.equal(r.status,503);assert.match((await r.json()).message,/Nothing has been stored/)});
+test('default status is disabled',async()=>{const r=await handler(new Request('https://demo.invalid/api/enquiry'));assert.equal((await r.json()).enabled,false)});
+test('disallows methods other than GET and POST',async()=>{const r=await handler(new Request('https://demo.invalid/api/enquiry',{method:'DELETE'}));assert.equal(r.status,405)});
+test('enabled backend rejects foreign origins before storage',async()=>{process.env.ENQUIRIES_ENABLED='true';process.env.TURNSTILE_SECRET_KEY='test-only-not-a-secret';process.env.SITE_ORIGIN='https://demo.invalid';const r=await handler(new Request('https://demo.invalid/api/enquiry',{method:'POST',headers:{origin:'https://other.invalid'}}));assert.equal(r.status,403);delete process.env.ENQUIRIES_ENABLED;delete process.env.TURNSTILE_SECRET_KEY;delete process.env.SITE_ORIGIN});
